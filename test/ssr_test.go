@@ -1,55 +1,71 @@
 package test
 
 import (
-	"encoding/base64"
-	"fmt"
 	"github.com/joho/godotenv"
+	http_dialer "github.com/mwitkow/go-http-dialer"
+	"github.com/zhangheng0027/shadowsocksR/client"
+	"net"
 	"net/url"
 	"os"
 	"testing"
+	"time"
 )
 
-func TestBase64(t *testing.T) {
-	encoded := "aGVsbG8gd29ybGQ=" // This is "hello world" encoded in base64
-	decoded, err := base64.StdEncoding.DecodeString(encoded)
+func TestShadowsocksR(t *testing.T) {
+	ssrurl, b := os.LookupEnv("ssrurl")
+	if !b {
+		t.Error("ssrurl not found")
+	}
+
+	purl, _ := url.Parse("http://localhost:12801")
+	tunnel := http_dialer.New(purl)
+
+	ssr1, err := client.NewSSR2(ssrurl, tunnel)
+
+	//ssr1, err := client.NewSSR1(ssrurl)
 	if err != nil {
-		fmt.Println("Error decoding base64:", err)
-		return
+		t.Error(err)
 	}
-	fmt.Println("Decoded string:", string(decoded))
-}
+	dial, err := ssr1.Dial("tcp", "www.google.com:443")
 
-func TestCompare(t *testing.T) {
-	surl, b := os.LookupEnv("ssrurl")
-
-	if b {
-		fmt.Println("ssrurl:", surl)
-	}
-
-	// 分割 surl，获取 // 后面的内容
-	u, err := url.Parse(surl)
-	if err != nil {
-		t.Fatal(err)
-	}
-	println(u.Host)
-	// base64 解码 u.host
-	//decodeString, err := base64.URLEncoding.DecodeString(u.Host)
-
-	decodeString, err := base64.NewEncoding("").DecodeString(surl)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	println(decodeString)
-
+	dial.Write([]byte("hello"))
 }
 
 func TestMain(m *testing.M) {
 	loadEnv()
+	listenPort()
 	code := m.Run()
 	os.Exit(code)
 }
 
 func loadEnv() {
 	godotenv.Load("ssr.env")
+}
+
+func listenPort() {
+	listen, err := net.Listen("tcp", ":12801")
+	if err != nil {
+		panic(err)
+	}
+	go func() {
+		defer listen.Close()
+		println("Listening on port 12801")
+		for {
+			conn, err := listen.Accept()
+			if err != nil {
+				panic(err)
+			}
+			go func() {
+				defer conn.Close()
+				buf := make([]byte, 1024)
+				n, err := conn.Read(buf)
+				if err != nil {
+					panic(err)
+				}
+				println(string(buf[:n]))
+			}()
+		}
+	}()
+	// sleep 1 s
+	time.Sleep(1 * time.Second)
 }
