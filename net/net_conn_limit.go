@@ -7,70 +7,75 @@ import (
 	"time"
 )
 
-// DefaultReadLimit 20 MB/s
-const DefaultReadLimit = 20 * 1024 * 1024
+// DefaultReadLimit 50 MB/s
+const DefaultReadLimit = 50 * 1024 * 1024
 
-// DefaultWriteLimit 20 MB/s
-const DefaultWriteLimit = 20 * 1024 * 1024
+// DefaultWriteLimit 50 MB/s
+const DefaultWriteLimit = 50 * 1024 * 1024
 
-type netConnLimit struct {
-	conn net.Conn
-	r    io.Reader
-	w    io.Writer
+type ConnLimit struct {
+	conn       net.Conn
+	r          io.Reader
+	w          io.Writer
+	readLimit  ratelimit.BucketI
+	writeLimit ratelimit.BucketI
 }
 
-func ToLimitNetConn(conn net.Conn, rBucket ratelimit.BucketI, wBucket ratelimit.BucketI) net.Conn {
-	n := &netConnLimit{
+func ToLimitNetConn(conn net.Conn, rBucket ratelimit.BucketI, wBucket ratelimit.BucketI) *ConnLimit {
+	n := &ConnLimit{
 		conn: conn,
 	}
 	if rBucket == nil {
-		n.r = ratelimit.Reader(conn, ratelimit.NewBucketWithRate(DefaultReadLimit, DefaultReadLimit*10))
-	} else {
-		n.r = ratelimit.Reader(conn, rBucket)
+		rBucket = ratelimit.NewBucketWithRate(DefaultReadLimit, DefaultReadLimit*10)
 	}
+	n.readLimit = rBucket
+	n.r = ratelimit.Reader(conn, rBucket)
 
 	if wBucket == nil {
-		n.w = ratelimit.Writer(conn, ratelimit.NewBucketWithRate(DefaultWriteLimit, DefaultWriteLimit*10))
-	} else {
-		n.w = ratelimit.Writer(conn, wBucket)
+		wBucket = ratelimit.NewBucketWithRate(DefaultWriteLimit, DefaultWriteLimit*10)
 	}
+	n.writeLimit = wBucket
+	n.w = ratelimit.Writer(conn, wBucket)
 	return n
 }
 
-func (n2 netConnLimit) Read(b []byte) (n int, err error) {
-	if n2.r != nil {
-		return n2.r.Read(b)
+func (n2 ConnLimit) addUpStream(readLimit *ratelimit.Bucket, writeLimit *ratelimit.Bucket) {
+	if nil != readLimit {
+		n2.readLimit.AddUpstream(readLimit)
 	}
-	return n2.conn.Read(b)
+	if nil != writeLimit {
+		n2.writeLimit.AddUpstream(writeLimit)
+	}
 }
 
-func (n2 netConnLimit) Write(b []byte) (n int, err error) {
-	if n2.w != nil {
-		return n2.w.Write(b)
-	}
-	return n2.conn.Write(b)
+func (n2 ConnLimit) Read(b []byte) (n int, err error) {
+	return n2.r.Read(b)
 }
 
-func (n2 netConnLimit) Close() error {
+func (n2 ConnLimit) Write(b []byte) (n int, err error) {
+	return n2.w.Write(b)
+}
+
+func (n2 ConnLimit) Close() error {
 	return n2.conn.Close()
 }
 
-func (n2 netConnLimit) LocalAddr() net.Addr {
+func (n2 ConnLimit) LocalAddr() net.Addr {
 	return n2.conn.LocalAddr()
 }
 
-func (n2 netConnLimit) RemoteAddr() net.Addr {
+func (n2 ConnLimit) RemoteAddr() net.Addr {
 	return n2.conn.RemoteAddr()
 }
 
-func (n2 netConnLimit) SetDeadline(t time.Time) error {
+func (n2 ConnLimit) SetDeadline(t time.Time) error {
 	return n2.conn.SetDeadline(t)
 }
 
-func (n2 netConnLimit) SetReadDeadline(t time.Time) error {
+func (n2 ConnLimit) SetReadDeadline(t time.Time) error {
 	return n2.conn.SetReadDeadline(t)
 }
 
-func (n2 netConnLimit) SetWriteDeadline(t time.Time) error {
+func (n2 ConnLimit) SetWriteDeadline(t time.Time) error {
 	return n2.conn.SetWriteDeadline(t)
 }

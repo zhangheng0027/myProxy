@@ -5,8 +5,9 @@ go 1.23.4
 require (
 	github.com/joho/godotenv v1.5.1
 	github.com/mwitkow/go-http-dialer v0.0.0-20161116154839-378f744fb2b8
-	github.com/zhangheng0027/ratelimit-plus v0.0.0-20250103072558-554c8585854a
-	github.com/zhangheng0027/shadowsocksR v0.0.0-20241231005501-2cdb893de6c7
+	github.com/robfig/cron/v3 v3.0.1
+	github.com/zhangheng0027/ratelimit-plus v0.0.0-20250106025850-c4ec7359bafd
+	github.com/zhangheng0027/shadowsocksR v0.0.0-20250107061555-b6e9f64657aa
 )
 
 // go get -u github.com/zhangheng0027/shadowsocksR
@@ -18,7 +19,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/stretchr/testify v1.8.2 // indirect
 	gitlab.com/yawning/chacha20.git v0.0.0-20230427033715-7877545b1b37 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/net v0.33.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/crypto v0.32.0 // indirect
+	golang.org/x/net v0.34.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
 )
