@@ -7,9 +7,17 @@ import (
 )
 
 type dns struct {
-	host         string
-	port         string
-	ip           []string
+	host string
+	port string
+
+	ip       []string
+	delay    []time.Duration
+	sumDelay time.Duration
+	count    []int
+
+	// 权重
+	weight []int
+
 	defaultIndex int
 	lastCheck    int64
 	nextDnsTime  time.Time
@@ -18,18 +26,37 @@ type dns struct {
 }
 
 func newDns(host string, port string, ip []string) *dns {
+	if ip == nil {
+		ip = make([]string, 0, 5)
+		ip = append(ip, host)
+	} else {
+		ip = append(ip, host)
+	}
 	d := &dns{
-		host:         host,
-		port:         port,
-		ip:           ip,
+		host: host,
+		port: port,
+
+		ip:       ip,
+		delay:    make([]time.Duration, len(ip)),
+		sumDelay: 0,
+		count:    make([]int, len(ip)),
+		weight:   make([]int, 120),
+
 		defaultIndex: 0,
 		lastCheck:    0,
-		nextDnsTime:  time.Now().Add(time.Hour * 24),
+		nextDnsTime:  time.Now().Add(time.Hour * 1),
 	}
-	if ip == nil {
-		d.ip = make([]string, 0, 5)
-		d.ip = append(ip, host)
+
+	for i := 0; i < len(ip); i++ {
+		d.delay[i] = 0
+		d.count[i] = 1
 	}
+
+	// 均匀分布
+	for i := 0; i < len(d.weight); i++ {
+		d.weight[i] = i % len(ip)
+	}
+
 	return d
 }
 
@@ -41,28 +68,44 @@ func (ns *dns) needDns() bool {
 	return false
 }
 
-func (ns *dns) GetIp() string {
-	return ns.ip[ns.defaultIndex]
+func (ns *dns) GetIp() (string, int) {
+
+	intn := rand.Intn(len(ns.weight))
+
+	return ns.ip[ns.weight[intn]], intn
 }
 
-func (ns *dns) GetRandIp() string {
-	return ns.ip[rand.Intn(len(ns.ip))]
+func (ns *dns) GetRandIp() (string, int) {
+	intn := rand.Intn(len(ns.ip))
+	return ns.ip[intn], intn
 }
 
-func (ns *dns) removeIp(ip string) {
+func (ns *dns) AddOneDialed(ip string, index int, delay time.Duration) {
+	go func() {
+		ns.mu.Lock()
+		defer ns.mu.Unlock()
+
+		if ip != ns.ip[ns.weight[index]] {
+			return
+		}
+
+		ns.delay[ns.weight[index]] = ns.delay[ns.weight[index]] + delay
+		ns.count[ns.weight[index]]++
+		ns.sumDelay += delay
+	}()
+}
+
+func (ns *dns) removeIp(ip string, index int) {
 	if ip == ns.host {
 		return
 	}
 
-	ns.mu.Lock()
-	defer ns.mu.Unlock()
-	if ip == ns.ip[ns.defaultIndex] {
-		ns.defaultIndex++
-	}
-	if ns.defaultIndex >= len(ns.ip) {
-		ns.defaultIndex = 0
-		ns.ip[0] = ns.host
-		ns.ip = ns.ip[:1]
-	}
+	go func() {
+		ns.mu.Lock()
+		defer ns.mu.Unlock()
+		if ns.ip[ns.weight[index]] != ip {
+			return
+		}
 
+	}()
 }

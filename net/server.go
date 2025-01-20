@@ -56,10 +56,14 @@ func remoteDial(conn *ConnLimit, addr string) (net.Conn, error) {
 func remoteDialNoSSR(proxyS *ProxyServer, sp []string) (net.Conn, error) {
 	fmt.Println("use proxy ", proxyS.addr, " <-> ", strings.Join(sp, ":"))
 	resolve := dnsResolve(sp[0], sp[1])
-	ip := resolve.GetIp()
+	ip, i := resolve.GetIp()
+	// 需要记录建立连接的耗时
+	now := time.Now()
 	dial, err := proxyS.tunnel.Dial("tcp", ip+":"+sp[1])
 	if err != nil {
-		resolve.removeIp(ip)
+		resolve.removeIp(ip, i)
+	} else {
+		resolve.AddOneDialed(ip, i, time.Since(now))
 	}
 	return dial, err
 }
@@ -104,7 +108,8 @@ func NewProxyServer(proxyAddr string, readSp int64, writeSp int64) *ProxyServer 
 func (ssr *SSRServer) DialDns(network, addr string) (net.Conn, error) {
 	sp := strings.Split(addr, ":")
 	resolve := dnsResolve(sp[0], sp[1])
-	return ssr.ssr.Dial(network, resolve.GetRandIp()+":"+sp[1])
+	ip, _ := resolve.GetRandIp()
+	return ssr.ssr.Dial(network, ip+":"+sp[1])
 }
 
 func (ps *ProxyServer) usageRate() float64 {
@@ -199,7 +204,7 @@ func checkSSR(w int64) {
 				ssr.availableFlag = false
 			} else {
 				ssr.availableFlag = true
-				fmt.Println("ssr server is available")
+				fmt.Println("ssr server is available", ssr.ssr.Remarks)
 			}
 		}(ssr)
 	}
