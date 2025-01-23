@@ -47,6 +47,7 @@ func main() {
 	net.Configuration.RouteSSRUrl["*.googleapis.com"] = true
 	net.Configuration.RouteSSRUrl["*.github.com"] = true
 	net.Configuration.RouteSSRUrl["*.docker.com"] = true
+	net.Configuration.RouteSSRUrl["*.docker.io"] = true
 	net.Configuration.RouteSSRUrl["*.blizzard.com"] = true
 	net.Configuration.RouteSSRUrl["*.google.com.hk"] = true
 	net.Configuration.RouteSSRUrl["*.youtube.com"] = true
@@ -56,6 +57,9 @@ func main() {
 	net.Configuration.RouteSSRUrl["*.googleusercontent.io"] = true
 	net.Configuration.RouteSSRUrl["*.wikipedia.org"] = true
 	net.Configuration.RouteSSRUrl["*.quartz-scheduler.org"] = true
+	net.Configuration.RouteSSRUrl["*.huggingface.co"] = true
+	net.Configuration.RouteSSRUrl["*.hooos.com"] = true
+	net.Configuration.RouteSSRUrl["*.cloudfront.net"] = true
 
 	net.Configuration.WhiteListIp["localhost"] = true
 	net.Listen(":15802")
